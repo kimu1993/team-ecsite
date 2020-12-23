@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8" />
+<title>EAGLE BOOK</title>
+</head>
+<body>
+<th:block th:fragment="pageHeader">
+	<script src="http://code.jquery.com/jquery-3.4.1.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+	<link rel="stylesheet"
+			href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+	<script src="/js/util/stringUtil.js" th:src="@{/js/util/stringUtil.js}"></script>
+	<script src="/js/util/validator.js" th:src="@{/js/util/validator.js}"></script>
+	<script src="/js/dialogConfig.js" th:src="@{/js/dialogConfig.js}"></script>
+	<script>
+		$(() => {
+			$('#loginError').dialog(dialogConfig.loginError);
+			
+			//各nameの値を取得しJSON形式に変換
+			$('button#login').on('click', () => {
+				let jsonString = {
+					'userName': $('div.loginArea input[name=userName]').val(),
+					'password': $('div.loginArea input[name=password]').val()
+				};
+				//AjaxでJSON形式の値をAuthControllerの/loginに送信
+				$.ajax({
+					type: 'POST',
+					url: '/eagle/auth/login',
+					data: JSON.stringify(jsonString),
+					contentType: 'application/json',
+					datatype: 'json',
+					scriptCharset: 'utf-8'
+				})
+				.then((result) => {
+					let user = JSON.parse(result);　//result文字列をJSONで解析しJavaオブジェクトに変換しuserに代入
+					
+					//userが空の場合
+					if (isEmpty(user)) {
+						$('#hiddenUserName').val('');
+						$('#loginError').dialog('open');
+					} else {
+						$('#hiddenUserName').val(user['userName']); //不可視のuserNameを保持
+						login(user);　//userが空ではない場合、userを引数にlogin関数を呼び出す
+					}
+				}, () => {
+					alert('Error: ajax connection failed.');
+				});
+			});
+			
+			$('button#logout').on('click', () => {
+				$.ajax({
+					type: 'POST',
+					url: '/eagle/auth/logout',
+					datatype: 'json',
+					scriptCharset: 'utf-8'
+				})
+				.then((result) => {
+					$('#hiddenUserName').val('');
+					logout();
+					alert('ログアウトしました。');
+					location.replace('/eagle/');
+				}, () => {
+					alert('Error: ajax connection failed.');
+				});
+			});
+			
+		});
+		
+		//ログイン処理を行うlogin関数
+		function login(user) {
+			//userNameを定義
+			let userName = user['userName'];
+			$('.welcomeMsg').text(`ようこそ！ ${userName} さん`); 
+			
+			
+			if (isEmpty($('button#login').prop('class'))) {	//#loginのclass要素がない場合
+				$('button#login').addClass('hidden');			//#loginにhiddenを追加（ログインボタンを非表示）
+				$('button#logout').removeClass('hidden');	//#logoutにhiddenを追加（ログアウトボタンを表示）
+			}
+
+			$('#mypageMenu').removeClass('hidden');
+			
+			$('div.loginArea input[name=userName]').val('');
+			$('div.loginArea input[name=password]').val('');
+		}
+
+		//ログアウト処理を行うlogout関数
+		function logout() {
+			$('.welcomeMsg').text(`ようこそ！ ゲスト さん`);
+			
+			if (isEmpty($('button#logout').prop('class'))) {// #logoutのclass要素がない場合
+				$('button#logout').addClass('hidden');		//#logoutにhiddenを追加（ログインボタンを非表示）
+				$('button#login').removeClass('hidden');		//#loginにhiddenを追加（ログアウトボタンを表示）
+			}
+			if (isEmpty($('#mypageMenu').prop('class'))) {
+				$('#mypageMenu').addClass('hidden');
+			}
+			
+			$('div.loginArea input[name=userName]').val('');
+			$('div.loginArea input[name=password]').val('');
+		}
+		/*]]>*/
+		</script>
+		<div class="headerTop">
+			<h1 class="logo"><a href="/eagle/">EAGLE BOOK</a></h1>
+			<span class="signup">
+				<a href="/eagle/user/" th:href="@{/eagle/user/}">
+				新規ユーザ登録はこちら
+				</a>
+			</span>
+			<span class="welcomeMsg"
+				th:text="'ようこそ！ ' + ${loginSession == null || loginSession.getUserName() == null ? 'ゲスト さん' : loginSession.getUserName() + ' さん'}"></span>
+		</div>
+		 
+		<nav>
+			<div class="loginArea">
+				<input type="text" name="userName" />
+				<input type="password" name="password" />
+				<!-- 不可視でUserNameを保持 -->
+				<input type="hidden" id="hiddenUserName" value="" />
+				<button id="login" th:class="${loginSession == null || loginSession.getUserName() == null ? '' : 'hidden'}">ログイン</button>
+				<button id="logout" th:class="${loginSession == null || loginSession.getUserName() == null ? 'hidden' : ''}">ログアウト</button>
+			</div>
+			<ul class="menu">
+				<li id="cartMenu"><a href="/eagle/cart/">カート</a></li>
+				<li id="mypageMenu"
+						th:class="${loginSession == null || loginSession.getUserName() == null ? 'hidden' : ''}">
+					<a href="/eagle/mypage/">マイページ</a>
+				</li>
+			</ul>
+		</nav>
+		<!-- Modal Dialog (ログインエラー) -->
+		<div th:insert="fragments/dialog_login_error::dialogLoginError"></div>
+	</th:block>
+
+
+	</body>
+	</html>
